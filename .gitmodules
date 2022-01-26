@@ -1,0 +1,3 @@
+[submodule "rtamt"]
+	path = rtamt
+	url = https://github.com/nickovic/rtamt.git
