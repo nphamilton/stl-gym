@@ -1,0 +1,22 @@
+env_name: Pendulum-v1
+variables:
+    - name: var_name1
+      location: obs
+      identifier: int
+    - name: var_name2
+      location: info
+      identifier: key
+    - name: var_name3
+      location: state
+      identifier: NOT IMPLEMENTED
+specifications:
+    - name: spec1
+      descriptor: optional description
+      spec: spec1 = always(eventually[0:5]((var_name1 <= 5) and (var_name2 >= 3))
+      weight: 0.6
+    - name: spec2
+      descriptor: optional description
+      spec: spec2 = always((var_name2 >= 3) implies (eventually[0.5:1.5](var_name1 >= 3)))
+    - name: spec3
+      descriptor: optional description
+      spec: spec3 = always(var_name3 > 5)
