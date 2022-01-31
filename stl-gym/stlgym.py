@@ -12,6 +12,8 @@ ObsType = TypeVar("ObsType")
 ActType = TypeVar("ActType")
 
 import yaml
+import rtamt
+import sys
 
 class STLGym(gym.core.Env):
     """The main OpenAI Gym class. It encapsulates an environment with
@@ -40,14 +42,14 @@ class STLGym(gym.core.Env):
         """
         TODO: description
         """
-        # TODO: add file reading and all that
+
         # Read the config YAML file
         with open(config_path, "r") as stream:
             try:
                 config_dict = yaml.safe_load(stream)
             except yaml.YAMLError as exc:
                 print(exc)
-        print(config_dict)
+        # print(config_dict)
 
         # Make the environment if it is not already provided
         if env is not None:
@@ -60,6 +62,43 @@ class STLGym(gym.core.Env):
         self._reward_range = None
         self._metadata = None
 
+        # Initialize variables for analyzing STL specifications
+        self.stl_spec = rtamt.STLDenseTimeSpecification()
+        self.data = dict()
+
+        # Sort through specified constants that will be used in the specifications
+        if 'constants' in config_dict.keys():
+            constants = config_dict['constants']
+            for i in constants:
+                self.stl_spec.declare_const(i['name'], i['type'], i['value'])
+
+        # Sort through specified variables that will be tracked
+        self.stl_variables = config_dict['variables']
+        for i in self.stl_variables:
+            self.stl_spec.declare_var(i['name'], i['type'])
+            self.data[i['name']] = []
+            if 'i/o' in i.keys():
+                self.stl_spec.set_var_io_type(i['name'], i['i/o'])
+
+        # Collect specifications
+        self.specifications = config_dict['specifications']
+        spec_str = "out = "
+        for i in self.specifications:
+            self.stl_spec.declare_var(i['name'], 'float')
+            self.stl_spec.add_sub_spec(i['spec'])
+            spec_str += i['name'] + ' and '
+            if 'weight' not in i.keys():
+                i['weight'] = 1.0
+        spec_str = spec_str[:-5]
+        self.stl_spec.declare_var('out', 'float')
+        self.stl_spec.spec = spec_str
+
+        # Parse the specification
+        try:
+            self.stl_spec.parse()
+        except rtamt.STLParseException as err:
+            print('STL Parse Exception: {}'.format(err))
+            sys.exit()
         
 
     def __getattr__(self, name):
@@ -116,7 +155,8 @@ class STLGym(gym.core.Env):
         self._metadata = value
 
     def step(self, action: ActType) -> Tuple[ObsType, float, bool, dict]:
-        """Run one timestep of the environment's dynamics. When end of
+        """
+        Run one timestep of the environment's dynamics. When end of
         episode is reached, you are responsible for calling `reset()`
         to reset this environment's state.
         Accepts an action and returns a tuple (observation, reward, done, info).
@@ -129,10 +169,28 @@ class STLGym(gym.core.Env):
             info (dict): contains auxiliary diagnostic information (helpful for debugging, and sometimes learning)
         """
         # TODO: modify this function
-        return self.env.step(action)
+        o, r, done, info = self.env.step(action)
+
+        # Add variables to their lists
+        for i in self.stl_variables:
+            if i['location'] == 'obs':
+                self.data[i['name']].append(o[i['identifier']])
+            elif i['location'] == 'info':
+                self.data[i['name']].append(info[i['identifier']])
+            elif i['location'] == 'state':
+                self.data[i['name']].append(self.__getattr__([i['identifier']]))
+            else:
+                # make an error for this
+                print('ERROR ERROR')
+        
+        # Calculate the reward
+        reward = self.compute_reward(done)
+
+        return o, reward, done, info
 
     def reset(self, **kwargs):
-        """Resets the environment to an initial state and returns an initial
+        """
+        Resets the environment to an initial state and returns an initial
         observation.
         Note that this function should not reset the environment's random
         number generator(s); random variables in the environment's state should
@@ -142,7 +200,9 @@ class STLGym(gym.core.Env):
         Returns:
             observation (object): the initial observation.
         """
-        # TODO: modify this function
+        # Reset the STL variable data
+        for i in self.stl_variables:
+            self.data[i['name']] = []
         return self.env.reset(**kwargs)
 
     def render(self, mode="human", **kwargs):
@@ -154,11 +214,17 @@ class STLGym(gym.core.Env):
     def seed(self, seed=None):
         return self.env.seed(seed)
 
-    def compute_reward(self, achieved_goal, desired_goal, info):
+    def compute_reward(self, done: bool) -> float:
         """TODO: write-up information
         """
-        # TODO: modify this function
-        return self.env.compute_reward(achieved_goal, desired_goal, info)
+        reward = 0
+        if done:
+            # TODO: fix this line so it works
+            rob = self.stl_spec.evaluate(['req', data[' req']], ['gnt', data[' gnt']])
+            for i in self.specifications:
+                reward += i['weight'] * self.stl_spec.get_value(i['name'])
+            print('robustness: ' + str(rob))
+        return reward
 
     def __str__(self):
         return f"<{type(self).__name__}{self.env}>"
