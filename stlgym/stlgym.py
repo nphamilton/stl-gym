@@ -6,7 +6,7 @@ import gym
 from gym import error, spaces
 
 from gym.utils import closer, seeding
-from gym.logger import deprecation
+# from gym.logger import deprecation
 
 ObsType = TypeVar("ObsType")
 ActType = TypeVar("ActType")
@@ -63,8 +63,10 @@ class STLGym(gym.core.Env):
         self._metadata = None
 
         # Initialize variables for analyzing STL specifications
-        self.stl_spec = rtamt.STLDenseTimeSpecification()
+        self.stl_spec = rtamt.STLDiscreteTimeSpecification()
         self.data = dict()
+        self.data['time'] = []
+        self.step_num = 0
 
         # Sort through specified constants that will be used in the specifications
         if 'constants' in config_dict.keys():
@@ -171,6 +173,10 @@ class STLGym(gym.core.Env):
         # TODO: modify this function
         o, r, done, info = self.env.step(action)
 
+        # Record and increment the time
+        self.data['time'].append(self.step_num)
+        self.step_num += 1
+
         # Add variables to their lists
         for i in self.stl_variables:
             if i['location'] == 'obs':
@@ -178,7 +184,7 @@ class STLGym(gym.core.Env):
             elif i['location'] == 'info':
                 self.data[i['name']].append(info[i['identifier']])
             elif i['location'] == 'state':
-                self.data[i['name']].append(self.__getattr__([i['identifier']]))
+                self.data[i['name']].append(self.__getattr__(i['identifier']))
             else:
                 # make an error for this
                 print('ERROR ERROR')
@@ -201,8 +207,9 @@ class STLGym(gym.core.Env):
             observation (object): the initial observation.
         """
         # Reset the STL variable data
-        for i in self.stl_variables:
-            self.data[i['name']] = []
+        self.step_num = 0
+        for key in self.data.keys():
+            self.data[key] = []
         return self.env.reset(**kwargs)
 
     def render(self, mode="human", **kwargs):
@@ -218,12 +225,16 @@ class STLGym(gym.core.Env):
         """TODO: write-up information
         """
         reward = 0
+        
         if done:
             # TODO: fix this line so it works
-            rob = self.stl_spec.evaluate(['req', data[' req']], ['gnt', data[' gnt']])
+            # foo = [[key, self.data[key]] for key in self.data.keys()]
+            # print(f'FFFFF: {foo}')
+            rob = self.stl_spec.evaluate(self.data)
             for i in self.specifications:
-                reward += i['weight'] * self.stl_spec.get_value(i['name'])
-            print('robustness: ' + str(rob))
+                # print(self.stl_spec.get_value(i['name']))
+                reward += float(i['weight']) * self.stl_spec.get_value(i['name'])[-1]
+            print(f'robustness: {str(rob[-1])}, reward: {reward}')
         return reward
 
     def __str__(self):
@@ -237,5 +248,39 @@ class STLGym(gym.core.Env):
         return self.env.unwrapped
 
 if __name__ == "__main__":
+    import numpy as np
+    from environments import *
+    
     config_path = './examples/pendulum.yaml'
     env = STLGym(config_path)
+    num_evals = 100
+    max_ep_len = 200
+    render = False
+
+    ep_returns = []
+    ep_lengths = []
+
+    for ep in range(num_evals):
+        env.reset()
+        ep_return = 0
+        ep_len = 0
+        for i in range(max_ep_len):
+            if render:
+                env.render()
+                # time.sleep(1e-3)
+            th, thdot = env.state
+            u = np.array([((-32.0 / np.pi) * th)])  # + ((-1.0 / np.pi) * thdot)])
+            _, r, done, info = env.step(u)
+            ep_return += r
+            ep_len += 1
+            if done and i < (max_ep_len - 1):
+                print(f"Failed: {env.state[0]} > {np.pi / 3.}; step: {i}")
+                break
+        ep_returns.append(ep_return)
+        ep_lengths.append(ep_len)
+    
+    # Compute the averages and print them
+    ep_rets = np.array(ep_returns)
+    ep_lens = np.array(ep_lengths)
+    print(f'Avg Return: {np.mean(ep_rets)} +- {np.std(ep_rets)}, Avg Length: {np.mean(ep_lens)}')
+    
