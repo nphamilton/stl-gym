@@ -15,6 +15,9 @@ import yaml
 import rtamt
 import sys
 
+def make(config_path: str, env=None) -> "STLGym":
+    return STLGym(config_path, env)
+
 class STLGym(gym.core.Env):
     """The main OpenAI Gym class. It encapsulates an environment with
     arbitrary behind-the-scenes dynamics. An environment can be
@@ -170,8 +173,7 @@ class STLGym(gym.core.Env):
             done (bool): whether the episode has ended, in which case further step() calls will return undefined results
             info (dict): contains auxiliary diagnostic information (helpful for debugging, and sometimes learning)
         """
-        # TODO: modify this function
-        o, r, done, info = self.env.step(action)
+        o, _, done, info = self.env.step(action)
 
         # Record and increment the time
         self.data['time'].append(self.step_num)
@@ -222,19 +224,25 @@ class STLGym(gym.core.Env):
         return self.env.seed(seed)
 
     def compute_reward(self, done: bool) -> float:
-        """TODO: write-up information
+        """
+        Computes the reward returned to the agent. The reward is only computed if 
+        the trace has ended, otherwise the reward is 0.
+
+        The reward is calculated according to how well the specifications were satisfied
+        according to the "degree of robustness" metric.
+        Args:
+            done    (bool):     Boolean value indicating if the  done condition(s) has/have been met.
+        Returns:
+            reward  (float):    Float value used for evaluating performance.
         """
         reward = 0
         
         if done:
-            # TODO: fix this line so it works
-            # foo = [[key, self.data[key]] for key in self.data.keys()]
-            # print(f'FFFFF: {foo}')
             rob = self.stl_spec.evaluate(self.data)
             for i in self.specifications:
                 # print(self.stl_spec.get_value(i['name']))
                 reward += float(i['weight']) * self.stl_spec.get_value(i['name'])[-1]
-            print(f'robustness: {str(rob[-1])}, reward: {reward}')
+            # print(f'robustness: {str(rob[-1])}, reward: {reward}')
         return reward
 
     def __str__(self):
@@ -251,7 +259,7 @@ if __name__ == "__main__":
     import numpy as np
     from environments import *
     
-    config_path = './examples/pendulum.yaml'
+    config_path = './examples/pendulum_stabilize.yaml'
     env = STLGym(config_path)
     num_evals = 100
     max_ep_len = 200
