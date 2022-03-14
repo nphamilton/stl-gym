@@ -1,0 +1,22 @@
+env_name: InvPendulum-v0
+constants:
+    - name: thresh
+      type: float
+      value: 0.1
+    - name: thresh_n
+      type: float
+      value:  -0.1
+variables:
+    - name: omega
+      type: float
+      location: obs
+      identifier: 2
+    - name: theta
+      type: float
+      location: info
+      identifier: theta
+specifications:
+    - name: task
+      descriptor: optional description
+      spec: task = eventually(always((theta <= thresh) and (theta >= thresh_n) and (omega <= 0.01) and (omega >= -0.01)))
+      weight: 1.0

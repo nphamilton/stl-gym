@@ -1,0 +1,18 @@
+variables:
+    - name: dist_to_lava
+      type: int
+      location: info
+      identifier: dist_to_lava
+    - name: dist_to_goal
+      type: int
+      location: info
+      identifier: dist_to_goal
+specifications:
+    - name: safety
+      descriptor: agent avoids entering the lava
+      spec: safety = always(dist_to_lava >= 1)
+      weight: 1.0
+    - name: reach_goal
+      descriptor: agent reaches the goal
+      spec: reach_goal = eventually(dist_to_goal <= 1)
+      weight: 1.0
