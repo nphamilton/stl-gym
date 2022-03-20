@@ -71,6 +71,10 @@ class STLGym(gym.core.Env):
         self.data['time'] = []
         self.step_num = 0
 
+        # Pull time information if it is provided
+        self.timestep = 1 if 'timestep' not in config_dict.keys() else config_dict['timestep']
+        self.horizon_length = 0 if 'horizon' not in config_dict.keys() else config_dict['horizon']
+
         # Sort through specified constants that will be used in the specifications
         if 'constants' in config_dict.keys():
             constants = config_dict['constants']
@@ -173,10 +177,10 @@ class STLGym(gym.core.Env):
             done (bool): whether the episode has ended, in which case further step() calls will return undefined results
             info (dict): contains auxiliary diagnostic information (helpful for debugging, and sometimes learning)
         """
-        o, _, done, info = self.env.step(action)
+        o, _, done, step_info = self.env.step(action)
 
         # Record and increment the time
-        self.data['time'].append(self.step_num)
+        self.data['time'].append(self.step_num * self.timestep)
         self.step_num += 1
 
         # Add variables to their lists
@@ -192,7 +196,9 @@ class STLGym(gym.core.Env):
                 print('ERROR ERROR')
         
         # Calculate the reward
-        reward = self.compute_reward(done)
+        reward, reward_info = self.compute_reward(done)
+
+        info = step_info | reward_info
 
         return o, reward, done, info
 
@@ -223,7 +229,7 @@ class STLGym(gym.core.Env):
     def seed(self, seed=None):
         return self.env.seed(seed)
 
-    def compute_reward(self, done: bool) -> float:
+    def compute_reward(self, done: bool) -> Tuple[float, dict]:
         """
         Computes the reward returned to the agent. The reward is only computed if 
         the trace has ended, otherwise the reward is 0.
@@ -236,14 +242,20 @@ class STLGym(gym.core.Env):
             reward  (float):    Float value used for evaluating performance.
         """
         reward = 0
+        info = dict()
         
         if done:
-            rob = self.stl_spec.evaluate(self.data)
-            for i in self.specifications:
-                # print(self.stl_spec.get_value(i['name']))
-                reward += float(i['weight']) * self.stl_spec.get_value(i['name'])[-1]
+            if (self.timestep * self.step_num) < self.horizon_length:
+                reward = -1.0
+            else:
+                rob = self.stl_spec.evaluate(self.data)
+                for i in self.specifications:
+                    # print(self.stl_spec.get_value(i['name']))
+                    val = self.stl_spec.get_value(i['name'])[-1]
+                    info[i['name']] = val
+                    reward += float(i['weight']) * val
             # print(f'robustness: {str(rob[-1])}, reward: {reward}')
-        return reward
+        return reward, info
 
     def __str__(self):
         return f"<{type(self).__name__}{self.env}>"

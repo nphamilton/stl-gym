@@ -1,4 +1,4 @@
-env_name: Cartpole-v1
+env_name: CartPole-v1
 variables:
     - name: pos
       type: float
