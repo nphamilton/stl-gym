@@ -177,7 +177,7 @@ class STLGym(gym.core.Env):
             done (bool): whether the episode has ended, in which case further step() calls will return undefined results
             info (dict): contains auxiliary diagnostic information (helpful for debugging, and sometimes learning)
         """
-        o, _, done, step_info = self.env.step(action)
+        o, _, done, info = self.env.step(action)
 
         # Record and increment the time
         self.data['time'].append(self.step_num * self.timestep)
@@ -198,7 +198,7 @@ class STLGym(gym.core.Env):
         # Calculate the reward
         reward, reward_info = self.compute_reward(done)
 
-        info = step_info | reward_info
+        info.update(reward_info)
 
         return o, reward, done, info
 
