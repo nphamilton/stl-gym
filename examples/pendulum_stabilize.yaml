@@ -1,11 +1,11 @@
 env_name: InvPendulum-v0
 constants:
-    - name: thresh
+    - name: theta_thresh
       type: float
       value: 0.1
-    - name: thresh_n
+    - name: omega_thresh
       type: float
-      value:  -0.1
+      value:  1.0
 variables:
     - name: omega
       type: float
@@ -18,5 +18,5 @@ variables:
 specifications:
     - name: task
       descriptor: optional description
-      spec: task = eventually(always((theta <= thresh) and (theta >= thresh_n) and (omega <= 0.01) and (omega >= -0.01)))
-      weight: 1.0
+      spec: task = eventually(always((abs(theta) <= theta_thresh)))
+      weight: 10.0

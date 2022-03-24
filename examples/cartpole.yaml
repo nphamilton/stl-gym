@@ -1,4 +1,17 @@
 env_name: CartPole-v1
+constants:
+    - name: angle_max_thresh
+      type: float
+      value: 0.20943951023
+    - name: angle_stability_thresh
+      type: float
+      value: 0.0349066
+    - name: pos_max_thresh
+      type: float
+      value: 2.4
+    - name: pos_stability_thresh
+      type: float
+      value: 0.5
 variables:
     - name: pos
       type: float
@@ -19,13 +32,13 @@ variables:
 specifications:
     - name: position_bound
       descriptor: cart remains in the bounds so that |pos| <= 2.4
-      spec: position_bound = always((pos <= 2.4) and (pos >= -2.4))
+      spec: position_bound = always(abs(pos) <= pos_max_thresh)
       weight: 1.0
     - name: angle_bound
       descriptor: cart keeps the pole upright in the bounds so that |angle| <= 12 degrees
-      spec: angle_bound = always((angle <= 0.20943951023) and (angle >= -0.20943951023))
+      spec: angle_bound = always(abs(angle) <= angle_max_thresh)
       weight: 1.0
     - name: stability
       descriptor: The cart and pole stabilize so that the cart is within |pos| <= 0.5 and the pole is within |angle| <= 2 degrees
-      spec: stability = always((pos <= 0.5) and (pos >= -0.5) and (angle <= 0.0349066) and (angle >= -0.0349066))
+      spec: stability = eventually(always((abs(pos) <= angle_stability_thresh) and (abs(angle) <= pos_stability_thresh)))
       weight: 1.0
