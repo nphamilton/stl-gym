@@ -76,9 +76,7 @@ class STLGym(gym.core.Env):
         self.horizon_length = 1 if 'horizon' not in config_dict.keys() else config_dict['horizon']
 
         # Pull the reward type from the config
-        self.dense = False
-        if 'dense' in config_dict.keys():
-            self.dense = True if config_dict['dense'] == 'True' else False
+        self.dense = False if 'dense' not in config_dict.keys() else config_dict['dense']
 
         # Sort through specified constants that will be used in the specifications
         if 'constants' in config_dict.keys():
@@ -267,6 +265,13 @@ class STLGym(gym.core.Env):
                 val = self.stl_spec.get_value(i['name'])[0]
                 info[i['name']] = val
                 reward += float(i['weight']) * val
+        # if (self.timestep * self.step_num) > self.horizon_length:
+        #     rob = self.stl_spec.evaluate(self.data)
+        #     for i in self.specifications:
+        #         # print(self.stl_spec.get_value(i['name']))
+        #         val = self.stl_spec.get_value(i['name'])[0]
+        #         info[i['name']] = val
+        #         reward += float(i['weight']) * val
         return reward, info
 
     def __str__(self):
