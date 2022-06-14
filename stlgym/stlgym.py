@@ -73,7 +73,10 @@ class STLGym(gym.core.Env):
 
         # Pull time information if it is provided
         self.timestep = 1 if 'timestep' not in config_dict.keys() else config_dict['timestep']
-        self.horizon_length = 0 if 'horizon' not in config_dict.keys() else config_dict['horizon']
+        self.horizon_length = 1 if 'horizon' not in config_dict.keys() else config_dict['horizon']
+
+        # Pull the reward type from the config
+        self.dense = False if 'dense' not in config_dict.keys() else config_dict['dense']
 
         # Sort through specified constants that will be used in the specifications
         if 'constants' in config_dict.keys():
@@ -244,17 +247,31 @@ class STLGym(gym.core.Env):
         reward = 0
         info = dict()
         
-        if done:
+        if (not self.dense) and done:
             if (self.timestep * self.step_num) < self.horizon_length:
                 reward = -1.0
             else:
                 rob = self.stl_spec.evaluate(self.data)
                 for i in self.specifications:
                     # print(self.stl_spec.get_value(i['name']))
-                    val = self.stl_spec.get_value(i['name'])[-1]
+                    val = self.stl_spec.get_value(i['name'])[0]
                     info[i['name']] = val
                     reward += float(i['weight']) * val
             # print(f'robustness: {str(rob[-1])}, reward: {reward}')
+        if self.dense and (self.timestep * self.step_num) > self.horizon_length:
+            rob = self.stl_spec.evaluate(self.data)
+            for i in self.specifications:
+                # print(self.stl_spec.get_value(i['name']))
+                val = self.stl_spec.get_value(i['name'])[0]
+                info[i['name']] = val
+                reward += float(i['weight']) * val
+        # if (self.timestep * self.step_num) > self.horizon_length:
+        #     rob = self.stl_spec.evaluate(self.data)
+        #     for i in self.specifications:
+        #         # print(self.stl_spec.get_value(i['name']))
+        #         val = self.stl_spec.get_value(i['name'])[0]
+        #         info[i['name']] = val
+        #         reward += float(i['weight']) * val
         return reward, info
 
     def __str__(self):
@@ -275,7 +292,7 @@ if __name__ == "__main__":
     env = STLGym(config_path)
     num_evals = 100
     max_ep_len = 200
-    render = False
+    render = True
 
     ep_returns = []
     ep_lengths = []
@@ -289,7 +306,7 @@ if __name__ == "__main__":
                 env.render()
                 # time.sleep(1e-3)
             th, thdot = env.state
-            u = np.array([((-32.0 / np.pi) * th)])  # + ((-1.0 / np.pi) * thdot)])
+            u = np.array([((-32.0 / np.pi) * th) + ((-1.0 / np.pi) * thdot)])
             _, r, done, info = env.step(u)
             ep_return += r
             ep_len += 1
