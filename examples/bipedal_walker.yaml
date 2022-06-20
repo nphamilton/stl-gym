@@ -1,0 +1,50 @@
+# This specification example comes from https://github.com/CPS-VIDA/simple-bhnr/blob/master/src/safe_rl/specs/bipedal_walker.py
+env_name: BipedalWalker-v2
+dense: True
+horizon: 16
+constants:
+    - name: hull_angle_max
+      type: float
+      value: 0.2
+variables:
+    - name: vel_x
+      type: float
+      location: obs
+      identifier: 2
+    - name: hull_angle
+      type: float
+      location: obs
+      identifier: 0
+    - name: hull_angularVelocity
+      type: float
+      location: obs
+      identifier: 1
+    - name: leg_1_ground_contact_flag
+      type: float
+      location: obs
+      identifier: 8
+    - name: leg_2_ground_contact_flag
+      type: float
+      location: obs
+      identifier: 13
+specifications:
+    - name: forward
+      descriptor: always be moving forward
+      spec: forward = always(vel_x > 1.0)
+      weight: 0.0
+    - name: hull_limit
+      descriptor: reduce hull tilt to +- 12deg
+      spec: hull_limit = always(abs(hull_angle) <= hull_angle_max)
+      weight: 0.0
+    - name: hull_rotation_limit
+      descriptor: Reduce hull angular velocity
+      spec: hull_rotation_limit = always(abs(hull_angularVelocity) < 2)
+      weight: 0.0
+    - name: no_run
+      descriptor: This prevents running
+      spec: no_run = always(((leg_1_ground_contact_flag > 0) implies (eventually[10:16](leg_2_ground_contact_flag > 0) and always[0:8](leg_2_ground_contact_flag <= 0))) and ((leg_2_ground_contact_flag > 0) implies (eventually[10:16](leg_1_ground_contact_flag > 0) and always[0:8](leg_1_ground_contact_flag <= 0))))
+      weight: 0.0
+    - name: goal
+      descriptor: conjunction of all specifications
+      spec: goal = forward and hull_limit and hull_rotation_limit and no_run
+      weight: 1.0
