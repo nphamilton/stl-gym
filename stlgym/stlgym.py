@@ -191,6 +191,11 @@ class STLGym(gym.core.Env):
             if i['location'] == 'obs':
                 self.data[i['name']].append(o[i['identifier']])
             elif i['location'] == 'info':
+                # keys = i['identifier'].split(', ')
+                # datum = info[keys[0]]
+                # for k in range(1, len(keys)):
+                #     datum = datum[keys[i]]
+                # self.data[i['name']].append(datum)
                 self.data[i['name']].append(info[i['identifier']])
             elif i['location'] == 'state':
                 self.data[i['name']].append(self.__getattr__(i['identifier']))
@@ -261,7 +266,7 @@ class STLGym(gym.core.Env):
         if self.dense and (self.timestep * self.step_num) > self.horizon_length:
             rob = self.stl_spec.evaluate(self.data)
             for i in self.specifications:
-                # print(self.stl_spec.get_value(i['name']))
+                print(self.stl_spec.get_value(i['name']))
                 val = self.stl_spec.get_value(i['name'])[0]
                 info[i['name']] = val
                 reward += float(i['weight']) * val
@@ -288,11 +293,11 @@ if __name__ == "__main__":
     import numpy as np
     from environments import *
     
-    config_path = './examples/pendulum_stabilize.yaml'
+    config_path = './examples/pendulum_keep_up.yaml'
     env = STLGym(config_path)
     num_evals = 100
     max_ep_len = 200
-    render = True
+    render = False  # True
 
     ep_returns = []
     ep_lengths = []
