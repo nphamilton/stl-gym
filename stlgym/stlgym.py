@@ -266,7 +266,7 @@ class STLGym(gym.core.Env):
         if self.dense and (self.timestep * self.step_num) > self.horizon_length:
             rob = self.stl_spec.evaluate(self.data)
             for i in self.specifications:
-                print(self.stl_spec.get_value(i['name']))
+                # print(self.stl_spec.get_value(i['name']))
                 val = self.stl_spec.get_value(i['name'])[0]
                 info[i['name']] = val
                 reward += float(i['weight']) * val

@@ -18,5 +18,5 @@ variables:
 specifications:
     - name: task
       descriptor: optional description
-      spec: task = eventually(always((abs(theta) <= theta_thresh)))
+      spec: task = eventually(always[0.0:10.0]((abs(theta) <= theta_thresh)))
       weight: 10.0
